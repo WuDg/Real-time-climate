@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>www.lai.com</title>
+<meta name="renderer" content="webkit">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<meta name="renderer" content="webkit">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<meta name="viewport"
+	content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="viewport"
+	content="width=device-width, initial-scale=1, maximum-scale=1">
+<link rel="stylesheet" href="layui/css/layui.css" media="all">
+<link rel="stylesheet" href="layui/css/layui.css" media="all">
+<link rel="stylesheet" type="text/css"
+	href="jquery-easyui/themes/default/easyui.css">
+<link rel="stylesheet" type="text/css"
+	href="jquery-easyui/themes/icon.css">
+<script type="text/javascript" src="jquery-easyui/jquery.min.js"></script>
+<script type="text/javascript" src="jquery-easyui/jquery.easyui.min.js"></script>
+<script type="text/javascript"
+	src="http://api.map.baidu.com/getscript?v=2.0&ak=wWy2A8K94nhntYTYUHS19RXW&services=&t=20180529182003"></script>
+</head>
+<body style="background-color:gray;">
+	<div style="width:50%; height:450px;float:left;">
+		<table id="datagrid" class="easyui-datagrid" title="实时显示天气信息"
+			style="width:100%;height:360px"
+			data-options="toolbar:'#tb',singleSelect:true,url:'LoadFormDBServlet',method:'get',singleSelect:true,rownumbers:true,loadMsg : '正在加载数据，请稍后...',pagination:true,pageList:[10,20,50,100],pageSize:10,pageNumber:1">
+			<thead>
+				<tr>
+					<th data-options="field:'siteName',width:140,align:'center'">断面名称</th>
+					<th data-options="field:'CODMn',width:120,align:'center',styler:cellStyler">高锰酸盐指数</th>
+					<th data-options="field:'attribute',width:140,align:'center'">断面属性
+					</th>
+					<th data-options="field:'dateTime',width:160,align:'center'">测量时间
+					</th>
+					<th data-options="field:'level',width:70,align:'center'">水质类别</th>
+					<th data-options="field:'status',width:70,align:'center'">PH</th>
+				</tr>
+			</thead>
+		</table>
+		<!--  <div id="leftBottom" style="height:500px;width:50%;float:left;">
+			<div class="layui-col-md6">
+				<div class="layui-card">
+					<div class="layui-card-header" id="showHead">此处显示选中城市信息</div>
+					<div class="layui-card-body" id="showPanel"
+						style="width:400px;background-color:gray;"></div>
+				</div>
+			</div>
+		</div>-->
+	</div>
+	<div id="map_container"
+		style="width:50%; height:100%; position:absolute; right:1px;overflow-y:hidden;"></div>
+	<!-- 条目中可以是任意内容，如：<img src=""> -->
+	<div id="tb" style="float: left;">
+		<input id="searchName" class="easyui-searchbox" searcher="doSearch"
+			prompt="输入断面名称" style="width: 130px;height:25px; vertical-align: middle;"></input>
+	</div>
+	<div id="r-result"></div>
+</body>
+<script type="text/javascript">
+	var point;
+	var marker;
+	function addPointByCityName(map, cityName) {
+		$.ajax({
+			type : "GET",
+			url : "http://api.map.baidu.com/geocoder/v2/?address=" + cityName + "&output=json&ak=wWy2A8K94nhntYTYUHS19RXW",
+			dataType : 'jsonp',
+			async : "true",
+			processData : false,
+			error : function(xhr, ajaxOptions, thrownError) {
+				alert("fail");
+			},
+			success : function(data) {
+				var points = [];
+				var x = data.result.location.lng;
+				var y = data.result.location.lat;
+				point = new BMap.Point(x, y);
+				points.push(point);
+				marker = new BMap.Marker(point);
+				map.addOverlay(marker);
+				var label = new BMap.Label(mess, {
+					offset : new BMap.Size(20, -10)
+				});
+				marker.setLabel(label);
+				var sContent = "天安门坐落在中国北京市中心,故宫的南侧,与天安门广场隔长安街相望,是清朝皇城的大门...";
+				var infoWindow = new BMap.InfoWindow(siteName + "<br/>" + mess); // 创建信息窗口对象
+				map.openInfoWindow(infoWindow, point); //开启信息窗口
+				document.getElementById("r-result").innerHTML = "信息窗口的内容是：<br />" + infoWindow.getContent();
+				if (isOver) {
+					marker.setAnimation(BMAP_ANIMATION_BOUNCE);
+					isOver = false;
+				}
+				map.setViewport(points); // 调整视角:地图显示范围涵盖allPoints中所有的点
+			}
+		});
+	}
+	var mess;
+	var siteName;
+	var map = new BMap.Map("map_container");
+	var point = new BMap.Point(117.404, 39.915);
+	map.centerAndZoom(point, 10);
+	map.enableScrollWheelZoom();
+	var pt = new BMap.Point(116.417, 39.909);
+	var myIcon = new BMap.Icon("http://lbsyun.baidu.com/jsdemo/img/fox.gif", new BMap.Size(300, 157));
+	var myP1 = new BMap.Point(116.380967, 39.913285); //起点
+	var isOver = false;
+	var myP2 = new BMap.Point(116.424374, 39.914668); //终点
+	var top_left_control = new BMap.ScaleControl({
+		anchor : BMAP_ANCHOR_TOP_LEFT
+	}); // 左上角，添加比例尺
+	var top_left_navigation = new BMap.NavigationControl(); //左上角，添加默认缩放平移控件
+	var top_right_navigation = new BMap.NavigationControl({
+		anchor : BMAP_ANCHOR_TOP_RIGHT,
+		type : BMAP_NAVIGATION_CONTROL_SMALL
+	});
+	map.addControl(top_left_control);
+	map.addControl(top_left_navigation);
+	map.addControl(top_right_navigation);
+	var driving2 = new BMap.DrivingRoute(map, {
+		renderOptions : {
+			map : map,
+			autoViewport : true
+		}
+	}); //驾车实例
+	function cellStyler(value, row, index) {
+		if (value > 5) {
+			return 'background-color:yellow;color:red;';
+		}
+	}
+	$(document.body).css({
+		"overflow-x" : "hidden",
+		"overflow-y" : "hidden"
+	});
+	window.setInterval("reload()", 10000);
+	function reload() {
+		$('#datagrid').datagrid('reload');
+	}
+	$("#datagrid").datagrid({
+		onClickRow : function(index, row) {
+			var content = "高锰酸盐指数:" + row["CODMn"] + "<br/>断面属性:" + row["attribute"] + "<br/>测量时间:" + row["dateTime"] + "<br/>水质类别:" + row["level"] + "<br/>状态:" + row["status"];
+			mess = "安全！"
+			if (row["CODMn"] > 5) {
+				isOver = true;
+				mess = "这里的高锰酸盐指数超标了,注意伤身体！"
+			}
+			mess=content+"<br/>"+mess;
+			var city = row["siteName"];
+			var row = $('#datagrid').datagrid('getSelected');
+			addPointByCityName(map, city);
+			map.removeOverlay(marker);
+			siteName = "断面名称:" + row["siteName"];
+			$('#showHead').html(siteName);
+			$('#showPanel').html(content);
+
+			addPointByCityName(siteName);
+		}
+	});
+	setInterval(function() {
+		$('#datagrid').datagrid('reload')
+	}, 60 * 1000);
+	function doSearch(value, name) { //用户输入用户名,点击搜素,触发此函数  
+		var search = $('#searchName').val();
+		$("#datagrid").datagrid({
+			title : '实时显示天气信息',
+			width : 780,
+			iconCls : 'icon-ok',
+			pageSize : 10,
+			pageList : [ 10, 20, 50, 100 ],
+			nowrap : true,
+			striped : true,
+			toolbar : "#tb",
+			url : 'SearchServlet?search=' + search, //触发此action,带上参数searcValue  
+			loadMsg : '数据加载中......',
+			columns : [ [ {
+				field : 'siteName',
+				width : 140,
+				align : 'center',
+				title : 'siteName'
+			}, {
+				field : 'CODMn',
+				width : 120,
+				align : 'center',
+				title : 'CODMn'
+			}, {
+				field : 'attribute',
+				width : 140,
+				align : 'center',
+				title : 'attribute'
+			}, {
+				field : 'dateTime',
+				width : 160,
+				title : 'dateTime',
+				align : 'center'
+			}, {
+				field : 'level',
+				width : 70,
+				align : 'center',
+				title : 'level'
+			}, {
+				field : 'status',
+				width : 70,
+				align : 'center',
+				title : 'status'
+			} ] ],
+			pagination : true,
+			rownumbers : true
+		})
+	}
+</script>
+<script src="layui/layui.js" charset="utf-8"></script>
+</html>
